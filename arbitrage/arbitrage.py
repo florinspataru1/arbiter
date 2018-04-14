@@ -79,7 +79,7 @@ class ArbitrerCLI:
         file = "log/%s.log" % config.profit_thresh
         os.makedirs(os.path.dirname(file), exist_ok=True)
         logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s',
-                            filename=file, level=level)
+                            filename=file, filemode='a', level=level)
     def init_config(self, args):
         if args.profit:
             config.profit_thresh = args.profit

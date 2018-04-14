@@ -1,6 +1,15 @@
 services:
   arbiter10:
     build: ./
+    volumes:
+      - ./log:/root/arbiter/log
+      - ./mocks:/root/arbiter/mocks
     environment:
       PROFIT: 10
-      LOG_FILE: "log/profit_min_10.txt"
+  arbiter20:
+    build: ./
+    volumes:
+      - ./log:/root/arbiter/log
+      - ./mocks:/root/arbiter/mocks
+    environment:
+      PROFIT: 20
