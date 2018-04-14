@@ -43,3 +43,4 @@ tmp/
 mocks/
 log/
 .idea
+venv/

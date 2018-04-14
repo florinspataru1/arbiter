@@ -8,6 +8,10 @@ RUN apk add --no-cache python python-dev python3 python3-dev \
     if [ ! -e /usr/bin/pip ]; then ln -s pip3 /usr/bin/pip ; fi && \
     rm -r /root/.cache
 
+RUN cd ~ && git clone https://github.com/florinspataru1/arbiter.git arbiter
+RUN cd ~/arbiter && chmod a+x *.sh
+
+WORKDIR ~/arbiter
 # Container entry point
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["~/arbiter/entrypoint.sh"]
 CMD ["start"]
