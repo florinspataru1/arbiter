@@ -2,6 +2,7 @@
 
 import time
 import logging
+import traceback
 import json
 from concurrent.futures import ThreadPoolExecutor, wait
 from arbitrage import public_markets
@@ -27,10 +28,12 @@ class Arbitrer(object):
                               market_name + '()')
                 self.markets.append(market)
             except (ImportError, AttributeError) as e:
+                traceback.print_exc()
                 print("%s market name is invalid: Ignored (you should check your config file)" % (market_name))
 
     def init_observers(self, _observers):
         self.observer_names = _observers
+        logging.info("init observers")
         for observer_name in _observers:
             try:
                 exec('import arbitrage.observers.' + observer_name.lower())
@@ -38,12 +41,13 @@ class Arbitrer(object):
                                 observer_name + '()')
                 self.observers.append(observer)
             except (ImportError, AttributeError) as e:
-                print("%s observer name is invalid: Ignored (you should check your config file)" % (observer_name))
+                logging.error('Ooops', exc_info=True)
+                print("%s observer name is invalid: Ignored (you should check your config file) %s" % (observer_name, str(e)))
 
     def get_profit_for(self, mi, mj, kask, kbid):
         if self.depths[kask]["asks"][mi]["price"] \
            >= self.depths[kbid]["bids"][mj]["price"]:
-            return 0, 0, 0, 0
+            return 0, 0, 0, 0, 0
 
         max_amount_buy = 0
         for i in range(mi + 1):
@@ -83,8 +87,15 @@ class Arbitrer(object):
                 w_sellprice = (w_sellprice * (
                     sell_total - amount) + price * amount) / sell_total
 
-        profit = sell_total * w_sellprice - buy_total * w_buyprice
-        return profit, sell_total, w_buyprice, w_sellprice
+        fee1 = config.market_fees[kask][0] + config.market_fees[kask][1]
+        fee2 = config.market_fees[kbid][0] + config.market_fees[kbid][1]
+
+        sell_commision = (sell_total * w_sellprice) * fee2
+        buy_commision = (sell_total * w_sellprice) * fee1
+        profit = (sell_total * w_sellprice) - (buy_total * w_buyprice)
+        profit_final = profit - sell_commision - buy_commision
+
+        return profit_final, profit, sell_total, w_buyprice, w_sellprice
 
     def get_max_depth(self, kask, kbid):
         i = 0
@@ -108,34 +119,45 @@ class Arbitrer(object):
     def arbitrage_depth_opportunity(self, kask, kbid):
         maxi, maxj = self.get_max_depth(kask, kbid)
         best_profit = 0
+        best_profit_total = 0
         best_i, best_j = (0, 0)
         best_w_buyprice, best_w_sellprice = (0, 0)
         best_volume = 0
         for i in range(maxi + 1):
             for j in range(maxj + 1):
-                profit, volume, w_buyprice, w_sellprice = self.get_profit_for(
+                profit, profit_total, volume, w_buyprice, w_sellprice = self.get_profit_for(
                     i, j, kask, kbid)
                 if profit >= 0 and profit >= best_profit:
                     best_profit = profit
+                    best_profit_total = profit_total
                     best_volume = volume
                     best_i, best_j = (i, j)
                     best_w_buyprice, best_w_sellprice = (
                         w_buyprice, w_sellprice)
-        return best_profit, best_volume, \
+        return best_profit, best_profit_total, best_volume, \
                self.depths[kask]["asks"][best_i]["price"], \
                self.depths[kbid]["bids"][best_j]["price"], \
                best_w_buyprice, best_w_sellprice
 
     def arbitrage_opportunity(self, kask, ask, kbid, bid):
         perc = (bid["price"] - ask["price"]) / bid["price"] * 100
-        profit, volume, buyprice, sellprice, weighted_buyprice,\
+        profit, profit_total, volume, buyprice, sellprice, weighted_buyprice,\
             weighted_sellprice = self.arbitrage_depth_opportunity(kask, kbid)
         if volume == 0 or buyprice == 0:
             return
+
+        # check if prices are right
+        for market in self.markets:
+            if market.name == kask:
+                market.double_ckeck_price(buyprice, "asks")
+
+            if market.name == kbid:
+                market.double_ckeck_price(sellprice, "bids")
+
         perc2 = (1 - (volume - (profit / buyprice)) / volume) * 100
         for observer in self.observers:
             observer.opportunity(
-                profit, volume, buyprice, kask, sellprice, kbid,
+                profit, profit_total, volume, buyprice, kask, sellprice, kbid,
                 perc2, weighted_buyprice, weighted_sellprice)
 
     def __get_market_depth(self, market, depths):

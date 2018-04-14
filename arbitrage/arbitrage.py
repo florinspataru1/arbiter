@@ -8,6 +8,7 @@ import os
 import inspect
 from arbitrage.arbitrer import Arbitrer
 from arbitrage import public_markets
+from arbitrage import config
 
 
 class ArbitrerCLI:
@@ -61,6 +62,7 @@ class ArbitrerCLI:
             print(market)
 
     def create_arbitrer(self, args):
+        logging.info("creating")
         self.arbitrer = Arbitrer()
         if args.observers:
             self.arbitrer.init_observers(args.observers.split(","))
@@ -74,7 +76,11 @@ class ArbitrerCLI:
         if args.debug:
             level = logging.DEBUG
         logging.basicConfig(format='%(asctime)s [%(levelname)s] %(message)s',
+                            filename="log/%s.log" % config.profit_thresh,
                             level=level)
+    def init_config(self, args):
+        if args.profit:
+            config.profit_thresh = args.profit
 
     def main(self):
         parser = argparse.ArgumentParser()
@@ -84,11 +90,14 @@ class ArbitrerCLI:
                             action="store_true")
         parser.add_argument("-o", "--observers", type=str,
                             help="observers, example: -oLogger,Emailer")
+        parser.add_argument("-p", "--profit", type=int,
+                            help="profit, example for 20USD: -p20")
         parser.add_argument("-m", "--markets", type=str,
                             help="markets, example: -mMtGox,Bitstamp")
         parser.add_argument("command", nargs='*', default="watch",
                             help='verb: "watch|replay-history|get-balance|list-public-markets"')
         args = parser.parse_args()
+        self.init_config(args)
         self.init_logger(args)
         self.exec_command(args)
 

@@ -1,0 +1,6 @@
+services:
+  arbiter10:
+    build: ./
+    environment:
+      PROFIT: 10
+      LOG_FILE: "log/profit_min_10.txt"

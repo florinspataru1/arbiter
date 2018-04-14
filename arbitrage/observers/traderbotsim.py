@@ -1,16 +1,18 @@
 import logging
 import json
+import os
 from arbitrage.observers.traderbot import TraderBot
-
+from arbitrage import config
 
 class MockMarket(object):
-    def __init__(self, name, fee=0, usd_balance=500., btc_balance=15.,
+    def __init__(self, name, fee=None, usd_balance=500., btc_balance=15.,
                  persistent=True):
         self.name = name
-        self.filename = "traderbot-sim-" + name + ".json"
+        self.filename = "mocks/%s/traderbot-sim-" + name + ".json" % config.profit_thresh
+        os.makedirs(os.path.dirname(self.filename), exist_ok=True)
         self.usd_balance = usd_balance
         self.btc_balance = btc_balance
-        self.fee = fee
+        self.fee = fee if fee else [0, 0]
         self.persistent = persistent
         if self.persistent:
             try:
@@ -22,7 +24,7 @@ class MockMarket(object):
         logging.info("execute buy %f BTC @ %f on %s" %
                      (volume, price, self.name))
         self.usd_balance -= price * volume
-        self.btc_balance += volume - volume * self.fee
+        self.btc_balance += volume - volume * (self.fee[0] + self.fee[1])
         if self.persistent:
             self.save()
 
@@ -30,7 +32,7 @@ class MockMarket(object):
         logging.info("execute sell %f BTC @ %f on %s" %
                      (volume, price, self.name))
         self.btc_balance -= volume
-        self.usd_balance += price * volume - price * volume * self.fee
+        self.usd_balance += price * volume - price * volume * (self.fee[0] + self.fee[1])
         if self.persistent:
             self.save()
 
@@ -52,22 +54,17 @@ class MockMarket(object):
 
 class TraderBotSim(TraderBot):
     def __init__(self):
-        self.kraken = MockMarket("kraken", 0.005, 5000) # 0.5% fee
-        self.paymium = MockMarket("paymium", 0.005, 5000) # 0.5% fee
-        self.bitstamp = MockMarket("bitstamp", 0.005, 5000) # 0.5% fee
-        self.btcc = MockMarket("btcc", 0.005, 5000) # 0.5% fee
-        self.okcoin = MockMarket("okcoin", 0.005, 5000) # 0.5% fee
-        self.clients = {
-            "KrakenEUR": self.kraken,
-            "PaymiumEUR": self.paymium,
-            "BitstampUSD": self.bitstamp,
-            "BTCCCNY": self.btcc,
-            "OKCoinCNY": self.okcoin,
-        }
-        self.profit_thresh = 10  # in EUR
-        self.perc_thresh = 0.02  # in %
+        self.clients = {};
+
+        for market_name in config.markets:
+            if config.market_fees[market_name]:
+                self.clients[market_name] = MockMarket(market_name,
+                                                       config.market_fees[market_name],
+                                                       5000, 0.5) # 0.5% fee
+
         self.trade_wait = 120
         self.last_trade = 0
+        self.total_gain = 0
 
     def total_balance(self, price):
         market_balances = [i.balance_total(
@@ -82,7 +79,10 @@ class TraderBotSim(TraderBot):
 
     def execute_trade(self, volume, kask, kbid,
                       weighted_buyprice, weighted_sellprice,
-                      buyprice, sellprice):
+                      buyprice, sellprice, perc):
+        logging.info("Buy @%s %f BTC and sell @%s" % (kask, volume, kbid))
+        # self.send_telegram_message("Buy @%s %f BTC and sell @%s" % (kask, volume, kbid))
+
         self.clients[kask].buy(volume, buyprice)
         self.clients[kbid].sell(volume, sellprice)
 

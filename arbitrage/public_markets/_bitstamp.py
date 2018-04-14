@@ -7,8 +7,8 @@ from arbitrage.public_markets.market import Market
 
 
 class Bitstamp(Market):
-    def __init__(self, currency, code):
-        super().__init__(currency)
+    def __init__(self, currency, code, cryptowatch_code=None):
+        super().__init__(currency, cryptowatch_code if cryptowatch_code != None else code.lower())
         self.code = code
         self.update_rate = 20
 

@@ -6,7 +6,7 @@ from arbitrage.public_markets.market import Market
 
 class Gemini(Market):
     def __init__(self, currency, symbol):
-        super().__init__(currency)
+        super().__init__(currency, cryptowatch_code if cryptowatch_code != None else code.lower())
         self.symbol = symbol
         self.update_rate = 30
 

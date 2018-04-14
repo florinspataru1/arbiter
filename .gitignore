@@ -38,6 +38,8 @@ nosetests.xml
 *.json
 
 # Project
-config.py
 old/
 tmp/
+mocks/
+log/
+.idea
