@@ -11,6 +11,9 @@ arbiter10:
   volumes:
     - ./log:/root/arbiter/log
     - ./mocks:/root/arbiter/mocks
+  depends_on:
+      - "arbiter5"
+    command: "sleep 10"
   environment:
     PROFIT: 10
 
@@ -19,5 +22,8 @@ arbiter20:
   volumes:
     - ./log:/root/arbiter/log
     - ./mocks:/root/arbiter/mocks
+  depends_on:
+      - "arbiter10"
+    command: "sleep 10"
   environment:
     PROFIT: 20
