@@ -2,6 +2,7 @@ import logging
 import time
 import urllib
 import json
+import datetime
 from arbitrage.observers.observer import Observer
 from arbitrage.fiatconverter import FiatConverter
 from arbitrage import config
@@ -18,6 +19,7 @@ class TraderBot(Observer):
         self.last_trade = 0
         self.potential_trades = []
         self.total_gain = 0
+        self.last_day_with_profit_notif = -1
 
     def begin_opportunity_finder(self, depths):
         self.potential_trades = []
@@ -36,6 +38,10 @@ class TraderBot(Observer):
         logging.info("Profit total: %f " % (self.total_gain))
         message = "profit: %.2f USD with volume: %f BTC - buy at %.4f (%s) sell at %.4f (%s) ~%.2f%%" % (self.potential_trades[0][0], self.potential_trades[0][2], self.potential_trades[0][7], self.potential_trades[0][3], self.potential_trades[0][8], self.potential_trades[0][4], self.potential_trades[0][9])
         self.send_telegram_message(message)
+        now = datetime.datetime.now()
+        if now.day != self.last_day_with_profit_notif:
+            self.send_telegram_message("@Addflash @scanagent007 @florinspataru1 Profit total: %f " % (self.total_gain))
+            self.last_day_with_profit_notif = now.day
 
     def get_min_tradeable_volume(self, buyprice, usd_bal, btc_bal):
         min1 = float(usd_bal) / ((1 + config.balance_margin) * buyprice)
