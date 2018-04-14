@@ -8,7 +8,7 @@ class MockMarket(object):
     def __init__(self, name, fee=None, usd_balance=500., btc_balance=15.,
                  persistent=True):
         self.name = name
-        self.filename = "mocks/%s/traderbot-sim-" + name + ".json" % config.profit_thresh
+        self.filename = "mocks/%s/traderbot-sim-%s.json" % (config.profit_thresh, name)
         os.makedirs(os.path.dirname(self.filename), exist_ok=True)
         self.usd_balance = usd_balance
         self.btc_balance = btc_balance
